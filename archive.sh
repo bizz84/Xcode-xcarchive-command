@@ -36,6 +36,7 @@ function archive()
     then
         echo "BUILD FAILED. Error Log:"
 	cat $build_errors_file
+	rm $build_errors_file
         exit 1
     fi
     rm $build_errors_file
