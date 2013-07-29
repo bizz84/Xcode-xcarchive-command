@@ -11,6 +11,7 @@
 #
 
 post_build_script=archive_paths.sh
+build_errors_file=build_errors.log
 OUTPUT=output/
 XCODEBUILD_CMD='/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild'
 TARGET_SDK=iphoneos
@@ -23,17 +24,21 @@ function archive()
     rm -f $post_build_script
 
     # Use custom provisioning profile and code sign identity if specified, otherwise default to project settings
+    # Note: xcodebuild always returns 0 even if the build failed. We look for failure in the stderr output instead
     if [[ ! -z "$2" ]] && [[ ! -z "$3" ]]; then 
-	${XCODEBUILD_CMD} clean archive -scheme $1 -sdk "${TARGET_SDK}" "CODE_SIGN_IDENTITY=$3" "PROVISIONING_PROFILE=$2"
+	${XCODEBUILD_CMD} clean archive -scheme $1 -sdk "${TARGET_SDK}" "CODE_SIGN_IDENTITY=$3" "PROVISIONING_PROFILE=$2" 2>$build_errors_file
     else
-	${XCODEBUILD_CMD} clean archive -scheme $1 -sdk "${TARGET_SDK}" 
+	${XCODEBUILD_CMD} clean archive -scheme $1 -sdk "${TARGET_SDK}" 2>$build_errors_file
     fi
 
-    if [ "$?" != "0" ]
+    errors=`grep -wc "The following build commands failed" $build_errors_file`
+    if [ "$errors" != "0" ]
     then
-        echo "Failed to make the build"
+        echo "BUILD FAILED. Error Log:"
+	cat $build_errors_file
         exit 1
     fi
+    rm $build_errors_file
 
     # Check if archive_paths.sh exists
     if [ -f "$post_build_script" ]; then
